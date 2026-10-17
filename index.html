@@ -346,6 +346,62 @@
       color: var(--ok);
     }
 
+    .shuffle-text-status {
+      color: #7f8c8d;
+      font-weight: bold;
+    }
+
+    .switch-input:checked~.shuffle-text-status {
+      color: #e67e22;
+    }
+
+    .switch-input.shuffle-toggle-checkbox:checked+.switch-slider {
+      background-color: #e67e22;
+    }
+
+    .btn-reshuffle {
+      background: #e67e22;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s, transform 0.1s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-reshuffle:hover {
+      background: #d35400;
+    }
+
+    .btn-reshuffle:active {
+      transform: scale(0.97);
+    }
+
+    .quiz-top-left,
+    .quiz-top-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .q-orig {
+      font-size: 0.85rem;
+      font-weight: normal;
+      color: #7f8c8d;
+      background: #edf2f7;
+      border: 1px solid #e2e8f0;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-left: 8px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+
     .mode-desc {
       font-size: 0.9rem;
       color: #555;
@@ -420,14 +476,26 @@
     <div id="dashboard" class="dashboard">
       <div class="mode-banner">
         <div class="mode-banner-content">
-          <label class="mode-switch-label">
-            <input type="checkbox" class="switch-input mode-toggle-checkbox" onchange="setInstantMode(this.checked)">
-            <span class="switch-slider"></span>
-            <span class="mode-text-title">⚡ Chế độ ôn tập:</span>
-            <span class="mode-text-status">Hiện đáp án ngay khi chọn</span>
-          </label>
-          <span class="mode-desc">Bật để biết ngay đáp án đúng/sai sau mỗi lần chọn; Tắt để làm hết rồi nộp bài ở cuối
-            trang.</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between;">
+            <div>
+              <label class="mode-switch-label">
+                <input type="checkbox" class="switch-input shuffle-toggle-checkbox" onchange="setShuffleMode(this.checked)">
+                <span class="switch-slider"></span>
+                <span class="mode-text-title">🔀 Đảo đề thi:</span>
+                <span class="shuffle-text-status">Đang bật (Đảo câu & đáp án)</span>
+              </label>
+              <div class="mode-desc" style="margin-top: 4px;">Tự động xáo trộn vị trí các câu hỏi và các đáp án A/B/C/D mỗi lần chọn chủ đề để luyện khả năng lựa chọn.</div>
+            </div>
+            <div>
+              <label class="mode-switch-label">
+                <input type="checkbox" class="switch-input mode-toggle-checkbox" onchange="setInstantMode(this.checked)">
+                <span class="switch-slider"></span>
+                <span class="mode-text-title">⚡ Chế độ ôn tập:</span>
+                <span class="mode-text-status">Hiện đáp án ngay khi chọn</span>
+              </label>
+              <div class="mode-desc" style="margin-top: 4px;">Bật để biết ngay đáp án đúng/sai sau mỗi lần chọn; Tắt để làm hết rồi nộp bài ở cuối trang.</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -462,13 +530,24 @@
 
     <div id="quiz-section">
       <div class="quiz-top-bar">
-        <button class="btn-back" onclick="backToDashboard()">← QUAY LẠI CHỌN CHỦ ĐỀ</button>
-        <label class="mode-switch-label">
-          <input type="checkbox" class="switch-input mode-toggle-checkbox" onchange="setInstantMode(this.checked)">
-          <span class="switch-slider"></span>
-          <span class="mode-text-title">⚡ Chế độ:</span>
-          <span class="mode-text-status">Hiện đáp án ngay khi chọn</span>
-        </label>
+        <div class="quiz-top-left">
+          <button class="btn-back" onclick="backToDashboard()">← QUAY LẠI CHỌN CHỦ ĐỀ</button>
+          <button class="btn-reshuffle" onclick="reshuffleCurrentTopic()" title="Xáo trộn lại câu hỏi và các đáp án">🔄 Đảo câu & Làm lại</button>
+        </div>
+        <div class="quiz-top-right">
+          <label class="mode-switch-label">
+            <input type="checkbox" class="switch-input shuffle-toggle-checkbox" onchange="setShuffleMode(this.checked)">
+            <span class="switch-slider"></span>
+            <span class="mode-text-title">🔀 Đảo đề:</span>
+            <span class="shuffle-text-status" data-short="1">Bật</span>
+          </label>
+          <label class="mode-switch-label">
+            <input type="checkbox" class="switch-input mode-toggle-checkbox" onchange="setInstantMode(this.checked)">
+            <span class="switch-slider"></span>
+            <span class="mode-text-title">⚡ Chế độ:</span>
+            <span class="mode-text-status">Hiện đáp án ngay khi chọn</span>
+          </label>
+        </div>
       </div>
       <div id="quiz-container"></div>
       <button class="btn-submit" onclick="gradeAll()">NỘP BÀI KIỂM TRA</button>
@@ -500,6 +579,9 @@
       }
       if (typeof initInstantMode === 'function') {
         initInstantMode();
+      }
+      if (typeof initShuffleMode === 'function') {
+        initShuffleMode();
       }
     };
 
@@ -3671,6 +3753,8 @@
     let answers = {};
     let gradedQuestions = {};
     let instantMode = true;
+    let shuffleMode = true;
+    let currentTopicId = null;
 
     function initInstantMode() {
       const saved = localStorage.getItem('kthp_instant_mode');
@@ -3699,6 +3783,106 @@
       });
 
       updateScoreDisplay();
+    }
+
+    function initShuffleMode() {
+      const saved = localStorage.getItem('kthp_shuffle_mode');
+      shuffleMode = (saved !== null) ? (saved === '1') : true;
+      setShuffleMode(shuffleMode, false);
+    }
+
+    function setShuffleMode(enabled, shouldRerender = true) {
+      shuffleMode = enabled;
+      localStorage.setItem('kthp_shuffle_mode', enabled ? '1' : '0');
+
+      document.querySelectorAll('.shuffle-toggle-checkbox').forEach(cb => {
+        cb.checked = enabled;
+      });
+
+      document.querySelectorAll('.shuffle-text-status').forEach(el => {
+        const isShort = el.getAttribute('data-short') === '1';
+        el.innerText = enabled
+          ? (isShort ? 'Bật' : 'Đang bật (Đảo câu & đáp án)')
+          : (isShort ? 'Tắt' : 'Đang tắt (Theo thứ tự gốc)');
+      });
+
+      if (shouldRerender && currentTopicId !== null && document.getElementById('quiz-section').style.display !== 'none') {
+        startQuiz(currentTopicId);
+      }
+    }
+
+    function reshuffleCurrentTopic() {
+      if (currentTopicId !== null) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        startQuiz(currentTopicId);
+      }
+    }
+
+    function shuffleArray(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function prepareQuestions(topicId, shuffle = true) {
+      const original = allData[topicId];
+      if (!original || original.length === 0) return [];
+
+      // Clone sâu để giữ nguyên ngân hàng gốc allData
+      const questions = JSON.parse(JSON.stringify(original));
+
+      if (!shuffle) return questions;
+
+      // 1. Đảo ngẫu nhiên thứ tự các câu hỏi
+      shuffleArray(questions);
+
+      // 2. Đảo ngẫu nhiên vị trí các lựa chọn đáp án trong từng câu
+      questions.forEach(item => {
+        if (item.type === "single" && Array.isArray(item.options)) {
+          const origCorrectIdx = item.correct;
+          const pairs = item.options.map((opt, idx) => ({
+            text: opt,
+            isCorrect: idx === origCorrectIdx
+          }));
+          shuffleArray(pairs);
+          item.options = pairs.map(p => p.text);
+          item.correct = pairs.findIndex(p => p.isCorrect);
+        } else if (item.type === "multi" && Array.isArray(item.options) && Array.isArray(item.correct)) {
+          const origCorrectList = item.correct;
+          const pairs = item.options.map((opt, idx) => ({
+            text: opt,
+            isCorrect: origCorrectList.includes(idx)
+          }));
+          shuffleArray(pairs);
+          item.options = pairs.map(p => p.text);
+          item.correct = pairs
+            .map((p, idx) => (p.isCorrect ? idx : -1))
+            .filter(idx => idx !== -1)
+            .sort((a, b) => a - b);
+        } else if (item.type === "tf" && Array.isArray(item.sub) && Array.isArray(item.correct)) {
+          const pairs = item.sub.map((statement, idx) => ({
+            text: statement.replace(/^\d+[\.\)]\s*/, ''),
+            isCorrect: item.correct[idx]
+          }));
+          shuffleArray(pairs);
+          item.sub = pairs.map((p, idx) => `${idx + 1}. ${p.text}`);
+          item.correct = pairs.map(p => p.isCorrect);
+        } else if (item.type === "boolean_group" && Array.isArray(item.items)) {
+          const pairs = item.items.map(it => ({
+            statement: it.statement.replace(/^\d+[\.\)]\s*/, ''),
+            correct: it.correct
+          }));
+          shuffleArray(pairs);
+          item.items = pairs.map((p, idx) => ({
+            statement: `${idx + 1}. ${p.statement}`,
+            correct: p.correct
+          }));
+        }
+      });
+
+      return questions;
     }
 
     function updateScoreDisplay() {
@@ -3760,13 +3944,14 @@
     }
 
     function startQuiz(topicId) {
-      currentQuestions = allData[topicId];
+      currentTopicId = topicId;
+      currentQuestions = prepareQuestions(topicId, shuffleMode);
       if (!currentQuestions || currentQuestions.length === 0) return;
 
       document.getElementById('dashboard').style.display = 'none';
       document.getElementById('quiz-section').style.display = 'block';
       document.getElementById('score-display').style.display = 'block';
-      document.getElementById('sub-title').innerText = "Bạn đang thực hiện ôn tập Chủ đề " + topicId;
+      document.getElementById('sub-title').innerText = "Bạn đang thực hiện ôn tập Chủ đề " + topicId + (shuffleMode ? " (Đã xáo trộn câu & đáp án)" : "");
 
       renderQuestions();
     }
@@ -3786,7 +3971,23 @@
       currentQuestions.forEach((item, idx) => {
         const card = document.createElement('div');
         card.className = 'card';
-        let html = `<span class="q-text">${item.q}</span>`;
+
+        let cleanText = item.q;
+        let origNum = item.id;
+        const match = item.q.match(/^Câu\s*(\d+)[:.]\s*(.*)/i);
+        if (match) {
+          if (!origNum) origNum = match[1];
+          cleanText = match[2];
+        }
+
+        let qHeading = '';
+        if (shuffleMode) {
+          qHeading = `<span class="q-text">Câu ${idx + 1}: ${cleanText} ${origNum ? `<span class="q-orig" title="Số thứ tự câu gốc trong ngân hàng đề">(Câu gốc: ${origNum})</span>` : ''}</span>`;
+        } else {
+          qHeading = `<span class="q-text">${item.q}</span>`;
+        }
+
+        let html = qHeading;
 
         if (item.type === "single" || item.type === "multi") {
           item.options.forEach((opt, oIdx) => {
@@ -3804,7 +4005,9 @@
                 </div></div>`;
           });
         } else if (item.type === "drag_match" || item.type === "drag_group") {
-          html += `<div class="drag-pool" id="pool-${idx}">${item.items ? item.items.map(it => `<div class="drag-item" data-val="${it}">${it}</div>`).join('') : item.pools.map(it => `<div class="drag-item" data-val="${it}">${it}</div>`).join('')}</div>`;
+          const poolItems = item.items ? [...item.items] : (item.pools ? [...item.pools] : []);
+          if (shuffleMode) shuffleArray(poolItems);
+          html += `<div class="drag-pool" id="pool-${idx}">${poolItems.map(it => `<div class="drag-item" data-val="${it}">${it}</div>`).join('')}</div>`;
           if (item.targets) {
             item.targets.forEach((t, tIdx) => {
               html += `<div style="margin-top:10px;">${t} <div class="drop-zone q-zone-${idx}" data-idx="${tIdx}"></div></div>`;
@@ -4103,6 +4306,7 @@
 
     // Khởi chạy ngay khi script sẵn sàng
     initInstantMode();
+    initShuffleMode();
   </script>
 
 </body>
