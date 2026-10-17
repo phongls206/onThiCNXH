@@ -208,6 +208,115 @@
       background: #fff5f5;
     }
 
+    /* Drag & Drop Correct Hints & Summary */
+    .drag-match-correct-hint {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      color: #155724;
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      padding: 6px 12px;
+      border-radius: 6px;
+      display: inline-block;
+      line-height: 1.4;
+    }
+
+    .drag-match-correct-hint .hint-icon {
+      font-weight: bold;
+      color: var(--ok);
+      margin-right: 4px;
+    }
+
+    .drag-match-correct-hint .hint-val {
+      font-weight: bold;
+      color: #0b5133;
+    }
+
+    .drag-correct-summary {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid #f5c6cb;
+    }
+
+    .drag-summary-item {
+      font-size: 0.95rem;
+      color: #333;
+      line-height: 1.5;
+    }
+
+    .drag-summary-item .badge-ans {
+      background: #e8f5e9;
+      color: #1b5e20;
+      border: 1px solid #a5d6a7;
+      padding: 3px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-left: 6px;
+      display: inline-block;
+    }
+
+    .drag-group-zone-hint {
+      margin-top: 8px;
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 0.88rem;
+      color: #155724;
+    }
+
+    .drag-group-zone-hint .hint-header {
+      font-weight: bold;
+      margin-bottom: 4px;
+      color: #0b5133;
+    }
+
+    .drag-group-zone-hint ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .drag-group-summary-grid {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      background: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid #f5c6cb;
+    }
+
+    .drag-group-summary-col {
+      background: #f8f9fa;
+      padding: 10px 14px;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
+    }
+
+    .summary-group-name {
+      color: var(--p);
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
+
+    .summary-group-ul {
+      margin: 0;
+      padding-left: 18px;
+      color: #2c3e50;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .summary-group-ul li {
+      margin-bottom: 4px;
+    }
+
     .btn-back {
       background: #95a5a6;
       color: white;
@@ -4135,6 +4244,131 @@
       }
     }
 
+    function gradeDragCard(idx, card, item) {
+      if (!card || !item) return false;
+      const isMatch = (item.type === "drag_match");
+      const dropZones = card.querySelectorAll('.drop-zone');
+      let isCorrect = true;
+
+      // 1. Khóa kéo thả sau khi kiểm tra
+      card.querySelectorAll('.drop-zone, .drag-pool').forEach(el => {
+        el.style.pointerEvents = 'none';
+      });
+      card.querySelectorAll('.drag-item').forEach(el => {
+        el.style.cursor = 'default';
+      });
+
+      // 2. Tắt nút kiểm tra
+      const chkBtn = card.querySelector(`.check-btn-${idx}`);
+      if (chkBtn) {
+        chkBtn.disabled = true;
+        chkBtn.style.opacity = '0.5';
+        chkBtn.style.cursor = 'default';
+        chkBtn.innerText = 'Đã kiểm tra';
+      }
+
+      if (isMatch) {
+        // drag_match
+        dropZones.forEach((z, zi) => {
+          const itemsInZone = Array.from(z.querySelectorAll('.drag-item'));
+          const correctTarget = item.correct[zi];
+          const expectedVal = (typeof correctTarget === 'number' && item.items && item.items[correctTarget] !== undefined)
+            ? item.items[correctTarget]
+            : correctTarget;
+
+          const match = (itemsInZone.length === 1 && itemsInZone[0].dataset.val === expectedVal);
+
+          z.classList.remove('correct-zone', 'wrong-zone');
+          if (match) {
+            z.classList.add('correct-zone');
+          } else {
+            z.classList.add('wrong-zone');
+            isCorrect = false;
+
+            // Hiển thị gợi ý đáp án đúng ngay dưới ô thả sai nếu chưa có
+            if (!z.parentElement.querySelector('.drag-match-correct-hint')) {
+              const hint = document.createElement('div');
+              hint.className = 'drag-match-correct-hint';
+              hint.innerHTML = `<span class="hint-icon">✓</span> Đáp án đúng: <span class="hint-val">${expectedVal}</span>`;
+              z.parentElement.appendChild(hint);
+            }
+          }
+        });
+
+        // Tạo hoặc cập nhật feedbackDiv
+        let feedbackDiv = card.querySelector('.feedback-msg');
+        if (!feedbackDiv) {
+          feedbackDiv = document.createElement('div');
+          card.appendChild(feedbackDiv);
+        }
+        feedbackDiv.className = `feedback-msg ${isCorrect ? 'ok' : 'no'}`;
+        if (isCorrect) {
+          feedbackDiv.innerHTML = `✓ <strong>Chính xác!</strong> Bạn đã ghép đúng tất cả các vị trí.`;
+        } else {
+          feedbackDiv.innerHTML = `<div style="font-weight: bold; margin-bottom: 8px;">✗ <strong>Chưa chính xác!</strong> Bảng đáp án đúng:</div>
+            <div class="drag-correct-summary">
+              ${item.targets.map((t, zi) => {
+                const correctTarget = item.correct[zi];
+                const expected = (typeof correctTarget === 'number' && item.items && item.items[correctTarget] !== undefined)
+                  ? item.items[correctTarget]
+                  : correctTarget;
+                const m = t.match(/^(\d+)[\.\)]\s*(.*)/);
+                const pos = m ? `Vị trí (${m[1]})` : `Vị trí ${zi + 1}`;
+                return `<div class="drag-summary-item"><strong>${pos}:</strong> <span class="badge-ans">${expected}</span></div>`;
+              }).join('')}
+            </div>`;
+        }
+      } else {
+        // drag_group
+        dropZones.forEach((z, zi) => {
+          const currentItems = Array.from(z.querySelectorAll('.drag-item')).map(i => i.dataset.val).sort();
+          const targetCorrect = (item.correct[zi] || []).slice().sort();
+          const match = (currentItems.join(',') === targetCorrect.join(','));
+
+          z.classList.remove('correct-zone', 'wrong-zone');
+          if (match) {
+            z.classList.add('correct-zone');
+          } else {
+            z.classList.add('wrong-zone');
+            isCorrect = false;
+
+            if (!z.parentElement.querySelector('.drag-group-zone-hint')) {
+              const hint = document.createElement('div');
+              hint.className = 'drag-group-zone-hint';
+              hint.innerHTML = `<div class="hint-header">✓ Các mục đúng của nhóm này:</div>
+                <ul>${targetCorrect.map(text => `<li><strong>${text}</strong></li>`).join('')}</ul>`;
+              z.parentElement.appendChild(hint);
+            }
+          }
+        });
+
+        let feedbackDiv = card.querySelector('.feedback-msg');
+        if (!feedbackDiv) {
+          feedbackDiv = document.createElement('div');
+          card.appendChild(feedbackDiv);
+        }
+        feedbackDiv.className = `feedback-msg ${isCorrect ? 'ok' : 'no'}`;
+        if (isCorrect) {
+          feedbackDiv.innerHTML = `✓ <strong>Chính xác!</strong> Bạn đã phân loại đúng tất cả các nhóm.`;
+        } else {
+          feedbackDiv.innerHTML = `<div style="font-weight: bold; margin-bottom: 8px;">✗ <strong>Chưa chính xác!</strong> Bảng phân loại đúng:</div>
+            <div class="drag-group-summary-grid">
+              ${item.groups.map((g, gi) => {
+                const list = item.correct[gi] || [];
+                return `<div class="drag-group-summary-col">
+                  <div class="summary-group-name">📁 <strong>${g}</strong></div>
+                  <ul class="summary-group-ul">
+                    ${list.map(text => `<li>${text}</li>`).join('')}
+                  </ul>
+                </div>`;
+              }).join('')}
+            </div>`;
+        }
+      }
+
+      return isCorrect;
+    }
+
     function gradeSingleCard(idx) {
       if (gradedQuestions[idx]) return;
       const item = currentQuestions[idx];
@@ -4153,6 +4387,13 @@
         }
         isCorrect = (answers[idx] === item.correct);
         btns.forEach(b => b.style.cursor = 'default');
+
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.className = `feedback-msg ${isCorrect ? 'ok' : 'no'}`;
+        feedbackDiv.innerHTML = isCorrect
+          ? `✓ <strong>Chính xác!</strong>`
+          : `✗ <strong>Chưa chính xác!</strong> Đáp án đúng là: <strong>${String.fromCharCode(65 + item.correct)}. ${item.options[item.correct]}</strong>`;
+        card.appendChild(feedbackDiv);
       } else if (item.type === "multi") {
         const btns = card.querySelectorAll('.option');
         const userAns = answers[idx] || [];
@@ -4168,56 +4409,25 @@
         const c = item.correct.slice().sort().join(',');
         isCorrect = (u === c);
         btns.forEach(b => b.style.cursor = 'default');
-      } else if (item.type === "drag_match") {
-        let ok = true;
-        card.querySelectorAll('.drop-zone').forEach((z, zi) => {
-          const it = z.querySelector('.drag-item');
-          const correctTarget = item.correct[zi];
-          let isMatch = false;
-          if (it) {
-            if (typeof correctTarget === 'number' && item.items && item.items[correctTarget] !== undefined) {
-              isMatch = (it.dataset.val === item.items[correctTarget]);
-            } else {
-              isMatch = (it.dataset.val == correctTarget);
-            }
-          }
-          if (isMatch) {
-            z.classList.add('correct-zone');
-          } else {
-            z.classList.add('wrong-zone');
-            ok = false;
-          }
-        });
-        isCorrect = ok;
-      } else if (item.type === "drag_group") {
-        let ok = true;
-        card.querySelectorAll('.drop-zone').forEach((z, zi) => {
-          const its = Array.from(z.querySelectorAll('.drag-item')).map(i => i.dataset.val).sort();
-          const targetCorrect = (item.correct[zi] || []).slice().sort();
-          if (its.join(',') === targetCorrect.join(',')) {
-            z.classList.add('correct-zone');
-          } else {
-            z.classList.add('wrong-zone');
-            ok = false;
-          }
-        });
-        isCorrect = ok;
-      }
 
-      const chkBtn = card.querySelector(`.check-btn-${idx}`);
-      if (chkBtn) {
-        chkBtn.disabled = true;
-        chkBtn.style.opacity = '0.5';
-        chkBtn.style.cursor = 'default';
-        chkBtn.innerText = 'Đã kiểm tra';
-      }
+        const chkBtn = card.querySelector(`.check-btn-${idx}`);
+        if (chkBtn) {
+          chkBtn.disabled = true;
+          chkBtn.style.opacity = '0.5';
+          chkBtn.style.cursor = 'default';
+          chkBtn.innerText = 'Đã kiểm tra';
+        }
 
-      const feedbackDiv = document.createElement('div');
-      feedbackDiv.className = `feedback-msg ${isCorrect ? 'ok' : 'no'}`;
-      feedbackDiv.innerHTML = isCorrect
-        ? `✓ <strong>Chính xác!</strong>`
-        : `✗ <strong>Chưa chính xác!</strong> Đáp án đúng đã được hiển thị.`;
-      card.appendChild(feedbackDiv);
+        const correctLetters = item.correct.map(ci => String.fromCharCode(65 + ci)).join(', ');
+        const feedbackDiv = document.createElement('div');
+        feedbackDiv.className = `feedback-msg ${isCorrect ? 'ok' : 'no'}`;
+        feedbackDiv.innerHTML = isCorrect
+          ? `✓ <strong>Chính xác!</strong>`
+          : `✗ <strong>Chưa chính xác!</strong> Các đáp án đúng là: <strong>${correctLetters}</strong>`;
+        card.appendChild(feedbackDiv);
+      } else if (item.type === "drag_match" || item.type === "drag_group") {
+        isCorrect = gradeDragCard(idx, card, item);
+      }
 
       updateScoreDisplay();
     }
@@ -4265,35 +4475,8 @@
             }
           });
           if (ok && Object.keys(answers[idx] || {}).length === correctList.length) score++;
-        } else if (item.type === "drag_match") {
-          let ok = true;
-          card.querySelectorAll('.drop-zone').forEach((z, zi) => {
-            const it = z.querySelector('.drag-item');
-            const correctTarget = item.correct[zi];
-            let isMatch = false;
-            if (it) {
-              if (typeof correctTarget === 'number' && item.items && item.items[correctTarget] !== undefined) {
-                isMatch = (it.dataset.val === item.items[correctTarget]);
-              } else {
-                isMatch = (it.dataset.val == correctTarget);
-              }
-            }
-            if (isMatch) z.classList.add('correct-zone');
-            else { z.classList.add('wrong-zone'); ok = false; }
-          });
-          if (ok) score++;
-        } else if (item.type === "drag_group") {
-          let ok = true;
-          card.querySelectorAll('.drop-zone').forEach((z, zi) => {
-            const its = Array.from(z.querySelectorAll('.drag-item')).map(i => i.dataset.val).sort();
-            const targetCorrect = (item.correct[zi] || []).slice().sort();
-            if (its.join(',') === targetCorrect.join(',')) {
-              z.classList.add('correct-zone');
-            } else {
-              z.classList.add('wrong-zone');
-              ok = false;
-            }
-          });
+        } else if (item.type === "drag_match" || item.type === "drag_group") {
+          const ok = gradeDragCard(idx, card, item);
           if (ok) score++;
         }
         gradedQuestions[idx] = true;
